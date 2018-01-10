@@ -1,0 +1,38 @@
+<html>
+<input type="file" id="excelfile" />  
+   <input type="button" id="viewfile" value="Export To Table" onclick="ExportToTable()" />  
+      <br />  
+      <br />  
+   <table id="exceltable">  
+</table>
+
+<script src = "http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js" type = "text/javascript"></script>  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.7.7/xlsx.core.min.js"></script>  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xls/0.7.4-a/xls.core.min.js"></script>  
+<script>
+function ExportToTable() {  
+           var request = new XMLHttpRequest();
+
+            request.responseType = "blob";
+            request.onreadystatechange = (e) => {
+                if (request.readyState !== 4) {
+                    return;
+                }
+                if (request.status === 200) {
+                    console.log('success', request);
+                } else {
+                    console.warn('error');
+                }
+            };
+
+            request.onload = function(oEvent) {
+                var blob = request.response;
+                console.log("blob", blob);
+                // ...
+            };
+
+            request.open('GET', "data/28.xlsx");
+            request.send();
+ }
+ </script>
+</html>
