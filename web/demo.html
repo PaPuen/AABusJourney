@@ -1,7 +1,8 @@
-<!doctype html>
+<!Doctype html>
 <html>
 <head>
 	<title>Demo </title>
+	<meta charset="utf-8"/>
 	<style>
 	body { 
 		width: max-content; 
@@ -16,25 +17,47 @@
 		height: 7px;
 	}
 	.cell {
-		border-top: 1px solid #ddd;
+		border-top: 7px solid #ddd;
 		width: 7px;
 		display: inline-block;
 		vertical-align: top;
 	}
+	#log {
+		border: 1px solid #ddd;
+		padding: 20px;
+		position: absolute;
+		margin-left: 1500px;
+		margin-top: 50px;
+		width: 300px;
+	}
+	#result {
+		border: 1px solid #ddd;
+		padding: 20px;
+		position: relative;
+		margin-left: 1500px;
+		margin-top: 50px;
+		width: 300px;
+	}
+	button {
+		height: 50px;
+		margin-bottom: 20px;
+		
+	}
 	</style>
 	<script src = "https://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js" type = "text/javascript"></script>
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.8.6/xlsx.full.min.js"></script>
-	<script>
-	
-	</script>
 </head>
 <body>
+<div id="log">
+
+</div>
+
 <div>
-	<input type="button" id="viewfile" value="Export To Table" onclick="ExportToTable()" />
+	<button value="" onclick="DoJourney17()" > Start Journey 51B02517 </button>
+	<button type="button" value="" onclick="DoJourney63()" > Start Journey 51B02635 </button>
 </div>
 <div class="grid"></div>
 	<script src = "plugins/grid.js"></script>
-
 <script src="plugins/xlsx/dist/cpexcel.js"></script>
 <script src="plugins/xlsx/shim.js"></script>
 <script src="plugins/xlsx/jszip.js"></script>
@@ -54,8 +77,23 @@ var XW = {
 };
 
 var global_wb;
-
 var global_grid;
+var journey_out;
+var route_legal = new Array();
+var bestnum;
+
+function P2Cell(P) {
+	var res = new Array();
+	res.push( Math.ceil((window.jLatMax - P[0])*1000) );
+	res.push( Math.ceil((window.jLngMax - P[1])*1000) );
+	return res;
+}
+function RouteP2Cell(P) {
+	var res = new Array();
+	res.push( Math.ceil((window.jLatMax - P[7])*1000) );
+	res.push( Math.ceil((window.jLngMax - P[8])*1000) );
+	return res;
+}
 function render_grid(rownum, colnum) {
     var grid = new Grid({
         rows: rownum,
@@ -64,30 +102,14 @@ function render_grid(rownum, colnum) {
             placeholder: ".grid"
         }
     });
-    <!-- grid.getCellAt(2, 1).$el.css('background', 'red'); -->
-	global_grid = grid;
+    grid.getCellAt(2, 1).$el.css('border-top', '7px solid red');
+	window.global_grid = grid;
 };
 
-var process_wb = (function() {
-	var to_json = function to_json(workbook) {
-		var result = {};
-		workbook.SheetNames.forEach(function(sheetName) {
-			var roa = X.utils.sheet_to_json(workbook.Sheets[sheetName], {header:1});
-			if(roa.length) result = roa;
-		});
-		return result;
-	};
-
-	return function process_wb(wb) {
-		global_wb = wb;
-		var output = "";
-		output = to_json(wb);
-		draw_grid(output);
-	};
-})();
-
-function draw_grid(route) {
-	console.log(route);
+function draw_point (point, color) {
+	window.global_grid.getCellAt(point[0], point[1]).$el.css('border-top', '7px solid '+ color);
+}
+function draw_journey(route, color) {
 	var latArray = route.map(function(elt) {return elt[0]; });
 	var latMax = Math.max.apply(null, latArray);
 	var latMin = Math.min.apply(null, latArray);
@@ -96,57 +118,28 @@ function draw_grid(route) {
 	var lngMax = Math.max.apply(null, lngArray);
 	var lngMin = Math.min.apply(null, lngArray);
 	
-	var grid_num_row = lngMax - lngMin + 50;
-	var grid_num_col = latMax - latMin + 50;
+	var grid_num_row = Math.ceil((lngMax - lngMin)*1000) + 3;
+	var grid_num_col = Math.ceil((latMax - latMin)*1000) + 3;
 	render_grid(grid_num_row, grid_num_col);
-	
-	console.log(latMax, latMin, lngMax, lngMin);
-	<!-- global_grid.getCellAt(3, 3).$el.css('border-top', '7px solid #000'); -->
-	for (var x=25; x < latMax-latMin+25; x++)
-		for (var y = 25; y < lngMax-lngMin+25; y++)
-			global_grid.getCellAt(x, y).$el.css('border-top', '7px solid #5da1e6'); 
+	window.jLatMax = latMax;
+	window.jLatMin = latMin;
+	window.jLngMax = lngMax;
+	window.jLngMin = lngMin;
+			
+	for (var i=0; i < route.length; i++) {
+		var point = P2Cell(route[i]);
+		draw_point(point, color);
+	}
+
+	$("#log").append("<h3>1. Phân tích hành trình...</h3>");
+	$("#log").append("<p> Min lat: " + latMin + "</p>");
+	$("#log").append("<p> Max lat: " + latMax + "</p>");
+	$("#log").append("<p> Min long: " + lngMin + "</p>");
+	$("#log").append("<p> Max long: " + lngMax + "</p>");
 }
-var setfmt = window.setfmt = function setfmt() { if(global_wb) process_wb(global_wb); };
 
-var b64it = window.b64it = (function() {
-	var tarea = document.getElementById('b64data');
-	return function b64it() {
-		if(typeof console !== 'undefined') console.log("onload", new Date());
-		var wb = X.read(tarea.value, {type:'base64', WTF:false});
-		process_wb(wb);
-	};
-})();
-
-var do_file_ = (function() {
-	var use_worker = typeof Worker !== 'undefined';
-	var xw = function xw(data, cb) {
-		var worker = new Worker(XW.worker);
-		worker.onmessage = function(e) {
-			switch(e.data.t) {
-				case 'ready': break;
-				case 'e': console.error(e.data.d); break;
-				case XW.msg: cb(JSON.parse(e.data.d)); break;
-			}
-		};
-		worker.postMessage({d:data,b:rABS?'binary':'array'});
-	};
-
-	return function do_file_(file) {
-		rABS = true;
-		var f = file;
-		var reader = new FileReader();
-		reader.onload = function(e) {
-			if(typeof console !== 'undefined') console.log("onload", new Date());
-			var data = e.target.result;
-			process_wb(X.read(data, {type: rABS ? 'binary' : 'array'}));
-		};
-		reader.readAsBinaryString(f);
-	};
-})();
-
-function ExportToTable() {
+function ReadJourney(path) {
 	var request = new XMLHttpRequest();
-
 	request.responseType = "blob";
 	request.onreadystatechange = (e) => {
 		if (request.readyState !== 4) {
@@ -158,23 +151,147 @@ function ExportToTable() {
 			console.warn('error');
 		}
 	};
-
+	
 	request.onload = function(oEvent) {
 		var blob = request.response;
-		// ...
-		<!-- do_file_(blob); -->
 		var reader = new FileReader();
 		reader.onload = function(e) {
-			if(typeof console !== 'undefined') console.log("onload", new Date());
+			<!-- if(typeof console !== 'undefined') console.log("onload", e); -->
 			var data = e.target.result;
-			process_wb(X.read(data, {type: 'binary'}));
+			global_wb = X.read(data, {type: 'binary'});
+			var output = "";
+			var result = {};
+			global_wb.SheetNames.forEach(function(sheetName) {
+				
+				var roa = X.utils.sheet_to_json(global_wb.Sheets[sheetName], {header:1});
+				if(roa.length) {
+					roa.shift();
+					result = roa;
+				}
+			});
+			window.journey_out = result;
+			draw_journey(result, '#5da1e6');
+			$("#log").append("<h3>2. Phân tích các Route nằm trong khu vực của Journey</h3>");
+			for (var i=1; i<=153; i++) {
+				ReadRoute("data/Route/"+i+".xlsx", i);
+			}
 		};
 		reader.readAsBinaryString(blob);
 	};
-	request.open('GET', "data/JourneyCell40/51B02517.xlsx");
+	request.open('GET', path);
 	request.send();
 };
 
+function draw_route(route, color){
+	for (var i=0; i < route.length; i++) {
+		var point = RouteP2Cell(route[i]);
+		draw_point(point, color);
+	}
+}
+function getDistance(p1x, p1y, p2x, p2y) {
+	return Math.sqrt(Math.pow(p1x-p2x, 2) + Math.pow(p1y - p2y, 2));
+}
+function RouteAnalyze_2(route, num) {
+	
+	var k = journey_out.lengh/2*0.1;
+	var journey = journey_out;
+	for (var i=0; i<k; i++){
+		journey.pop();
+		journey.shift();
+	} 
+	
+	var distances = new Array();
+	route.map(function(point){
+		var mindistance = 10000;
+		journey_out.map(function(jpoint){
+			var distance = getDistance(jpoint[0], jpoint[1], point[7], point[8]);
+			mindistance = (distance < mindistance) ? distance : mindistance;
+		});
+		distances.push(mindistance*10000);
+	});
+	console.log("Mindistances", distances);
+	var average = distances.reduce((previous, current) => current += previous) / (distances.length);
+
+	var sd = 0;
+	distances.map(function(e) {
+		sd += Math.pow((e-average), 2);
+	});
+	sd = Math.sqrt((sd/distances.length));
+
+	$("#log").append("<p>Trung bình các min-distance: "+average+" </p>");
+	$("#log").append("<p>Độ lệch chuẩn: "+sd+" </p>");
+}
+
+function RouteAnalyze(route, num) {
+	var latArray = route.map(function(elt) {return elt[7]; });
+	var latMax = Math.max.apply(null, latArray);
+	var latMin = Math.min.apply(null, latArray);
+	
+	var lngArray = route.map(function(elt) {return elt[8]; });
+	var lngMax = Math.max.apply(null, lngArray);
+	var lngMin = Math.min.apply(null, lngArray);
+	if (window.jLatMin<=latMin && window.jLatMax>=latMax && window.jLngMin <= lngMin && window.jLngMax >= lngMax) {
+		route_legal.push(route);
+		$("#log").append("<p> Route <b>" +num+ "</b> </p>");
+		$("#log").append("<p>" + latMin +" "+ latMax +" "+ lngMin +" "+ lngMax + "</p>");
+
+		var letters = '0123456789ABCDEF';
+		  var color = '#';
+		  for (var i = 0; i < 6; i++) {
+			color += letters[Math.floor(Math.random() * 16)];
+		  }
+		console.log("legal", route);
+		draw_route(route, color);
+		RouteAnalyze_2(route, num);
+	}
+}
+
+function ReadRoute(path, num) {
+	var request = new XMLHttpRequest();
+	request.responseType = "blob";
+	request.onreadystatechange = (e) => {
+		if (request.readyState !== 4) {
+			return;
+		}
+		if (request.status === 200) {
+		} else {
+			console.warn('error');
+		}
+	};
+	
+	request.onload = function(oEvent) {
+		var blob = request.response;
+		var reader = new FileReader();
+		reader.onload = function(e) {
+			<!-- if(typeof console !== 'undefined') console.log("onload", e); -->
+			var data = e.target.result;
+			_wb = X.read(data, {type: 'binary'});
+			var result = {};
+			_wb.SheetNames.forEach(function(sheetName) {
+				var roa = X.utils.sheet_to_json(_wb.Sheets[sheetName], {header:1});
+				if(roa.length) {
+					roa.shift();
+					result = roa;
+				}
+			});
+			RouteAnalyze(result, num);
+		};
+		reader.readAsBinaryString(blob);
+	};
+	request.open('GET', path);
+	request.send();
+};
+
+function DoJourney17(){
+	$(".grid").empty();
+	$("#log").empty();
+	ReadJourney( "data/Journey/51B02517.xlsx");
+}
+function DoJourney63(){
+	$(".grid").empty();
+	$("#log").empty();
+	ReadJourney( "data/Journey/51B02635.xlsx");
+}
 </script>
 <script type="text/javascript">
 /* eslint no-use-before-define:0 */
